@@ -49,7 +49,7 @@ func main() {
 
 func waitingShutdown(s *http.Server, timeout time.Duration) {
 	defer func() {
-		fmt.Println("Q50W server stopped")
+		log.Println("Q50W server stopped")
 	}()
 
 	stop := make(chan os.Signal, 1)
@@ -59,7 +59,7 @@ func waitingShutdown(s *http.Server, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	fmt.Println("Shutdown...")
+	log.Println("Shutdown...")
 
 	if err := s.Shutdown(ctx); err != nil {
 		log.Printf("Error: %v\n", err)
