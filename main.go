@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -13,22 +12,13 @@ import (
 	"time"
 )
 
-var serverConfig *ServerConfig
-
-func init() {
-	serverConfig = new(ServerConfig)
-	serverConfig.Version = "0.0.1.0"
-	serverConfig.LogFileName = "q50w.log"
-	serverConfig.Host = "127.0.0.1"
-	serverConfig.Port = "8080"
-
-	flag.StringVar(&serverConfig.Host, "host", "127.0.0.1", "-host 127.0.0.1")
-	flag.StringVar(&serverConfig.Port, "port", "8080", "-port 80")
-	flag.Parse()
-}
-
 func main() {
-	f, err := os.OpenFile(serverConfig.LogFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0664)
+	settings, err := LoadConfig()
+	if err != nil {
+		fmt.Printf("Load config file error: %s. Settings will be applied by default.\n", err.Error())
+	}
+
+	f, err := os.OpenFile(settings.LogFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0664)
 	if err != nil {
 		fmt.Printf("Error opening file: %v", err)
 	}
@@ -37,10 +27,10 @@ func main() {
 	mw := io.MultiWriter(os.Stdout, f)
 	log.SetOutput(mw)
 
-	s := NewHttpServer(serverConfig)
+	s := NewHttpServer(settings)
 
 	go func() {
-		log.Printf("Q50 web server v%s started on address: %v\n", serverConfig.Version, serverConfig.Addr())
+		log.Printf("Q50 web server v%s started on address: %v\n", settings.Version, settings.Addr())
 		log.Fatal(s.ListenAndServe())
 	}()
 

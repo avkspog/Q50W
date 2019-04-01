@@ -17,21 +17,20 @@ type Client struct {
 	ID string
 }
 
-const (
-	LengthID = 15         //TODO to config
-	WatchID  = "watch_id" //TODO to config
-)
+var settings *Config
 
 var (
 	cookieExpires = 1 * 365 * 24 * time.Hour
 	tmpl          = template.Must(template.ParseFiles(path.Join("templates", "index.html")))
 )
 
-func NewHttpServer(config *ServerConfig) *http.Server {
+func NewHttpServer(cfg *Config) *http.Server {
+	settings = cfg
+
 	handler := createHandler()
 
 	s := &http.Server{
-		Addr:           config.Addr(),
+		Addr:           settings.Addr(),
 		Handler:        handler,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -58,7 +57,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	var watchIDValue string
 	viewData := ViewData{}
 
-	cookie, err := r.Cookie(WatchID)
+	cookie, err := r.Cookie(settings.CookieIDName)
 	if err != nil {
 		handleIndexTemplate(w, r, viewData)
 		return
@@ -66,9 +65,9 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 
 	watchIDValue = spaceJoin(cookie.Value)
 
-	if !(len(watchIDValue) > 0 && len(watchIDValue) <= LengthID) {
+	if !(len(watchIDValue) > 0 && len(watchIDValue) <= settings.CookieMaxLength) {
 		cookie := &http.Cookie{
-			Name:   WatchID,
+			Name:   settings.CookieIDName,
 			Path:   "/",
 			MaxAge: -1,
 		}
@@ -97,14 +96,14 @@ func handleSetCookie(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.ParseForm()
-	watchIDValue := spaceJoin(r.FormValue(WatchID))
+	watchIDValue := spaceJoin(r.FormValue(settings.CookieIDName))
 
-	if !(len(watchIDValue) > 0 && len(watchIDValue) <= LengthID) {
+	if !(len(watchIDValue) > 0 && len(watchIDValue) <= settings.CookieMaxLength) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 
 	cookie := &http.Cookie{
-		Name:    WatchID,
+		Name:    settings.CookieIDName,
 		Value:   watchIDValue,
 		Path:    "/",
 		Expires: time.Now().Add(cookieExpires),
