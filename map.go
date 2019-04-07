@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -22,9 +23,10 @@ var settings *Config
 var (
 	cookieExpires = 1 * 365 * 24 * time.Hour
 	tmpl          = template.Must(template.ParseFiles(path.Join("templates", "index.html")))
+	checkClientID = regexp.MustCompile("^[A-Za-z0-9]{1,15}$").MatchString
 )
 
-func NewHttpServer(cfg *Config) *http.Server {
+func NewHTTPServer(cfg *Config) *http.Server {
 	settings = cfg
 
 	handler := createHandler()
@@ -48,7 +50,7 @@ func createHandler() *http.ServeMux {
 	handler.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	handler.HandleFunc("/", handleIndex)
-	handler.HandleFunc("/setwatch", handleSetCookie)
+	handler.HandleFunc("/set_id", handleSetCookie)
 
 	return handler
 }
@@ -64,8 +66,9 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	watchIDValue = spaceJoin(cookie.Value)
+	result := checkClientID(watchIDValue)
 
-	if !(len(watchIDValue) > 0 && len(watchIDValue) <= settings.CookieMaxLength) {
+	if !result {
 		cookie := &http.Cookie{
 			Name:   settings.CookieIDName,
 			Path:   "/",
@@ -83,13 +86,6 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	handleIndexTemplate(w, r, viewData)
 }
 
-func handleIndexTemplate(w http.ResponseWriter, r *http.Request, data interface{}) {
-	if err := tmpl.ExecuteTemplate(w, "index", data); err != nil {
-		log.Println(err.Error())
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-}
-
 func handleSetCookie(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -97,8 +93,9 @@ func handleSetCookie(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
 	watchIDValue := spaceJoin(r.FormValue(settings.CookieIDName))
+	result := checkClientID(watchIDValue)
 
-	if !(len(watchIDValue) > 0 && len(watchIDValue) <= settings.CookieMaxLength) {
+	if !result {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 
@@ -111,6 +108,13 @@ func handleSetCookie(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, cookie)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func handleIndexTemplate(w http.ResponseWriter, r *http.Request, data interface{}) {
+	if err := tmpl.ExecuteTemplate(w, "index", data); err != nil {
+		log.Println(err.Error())
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 }
 
 func spaceJoin(s string) string {
