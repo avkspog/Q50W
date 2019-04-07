@@ -27,7 +27,7 @@ func main() {
 	mw := io.MultiWriter(os.Stdout, f)
 	log.SetOutput(mw)
 
-	s := NewHttpServer(settings)
+	s := NewHTTPServer(settings)
 
 	go func() {
 		log.Printf("Q50 web server v%s started on address: %v\n", settings.Version, settings.Addr())
