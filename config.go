@@ -13,12 +13,14 @@ const (
 )
 
 type Config struct {
-	Version         string `json:"-"`
-	Host            string `json:"host"`
-	Port            string `json:"port"`
-	LogFileName     string `json:"log_file_name"`
-	CookieIDName    string `json:"cookie_id_name"`
-	CookieMaxLength int    `json:"cookie_max_length"`
+	Version          string `json:"-"`
+	Host             string `json:"host"`
+	Port             string `json:"port"`
+	WatchServiceHost string `json:"watch_service_host"`
+	WatchServicePort string `json:"watch_service_port"`
+	LogFileName      string `json:"log_file_name"`
+	CookieIDName     string `json:"cookie_id_name"`
+	CookieMaxLength  int    `json:"cookie_max_length"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -40,6 +42,10 @@ func LoadConfig() (*Config, error) {
 
 func (c *Config) Addr() string {
 	return net.JoinHostPort(c.Host, c.Port)
+}
+
+func (c *Config) ServiceAddr() string {
+	return net.JoinHostPort(c.WatchServiceHost, c.WatchServicePort)
 }
 
 func (c *Config) Save() error {
@@ -64,11 +70,13 @@ func checkErr(err error) {
 
 func getDefaultSettings() *Config {
 	return &Config{
-		Version:         Version,
-		LogFileName:     "q50w.log",
-		Host:            "127.0.0.1",
-		Port:            "8080",
-		CookieIDName:    "watch_id",
-		CookieMaxLength: 15,
+		Version:          Version,
+		LogFileName:      "q50w.log",
+		Host:             "127.0.0.1",
+		Port:             "8080",
+		WatchServiceHost: "127.0.0.1",
+		WatchServicePort: "30732",
+		CookieIDName:     "watch_id",
+		CookieMaxLength:  15,
 	}
 }
