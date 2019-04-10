@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package api;
+
+service routePoint {
+
+    rpc LastPoint (Identifier) returns (Point) {
+    }
+
+    rpc ServerStatistic (ServerCommand) returns (ServerResponse) {
+    }
+
+    rpc Ping (PingCommand) returns (PingCommand) {
+    }
+}
+
+message Identifier {
+    string version = 1;
+    string clientId = 2;
+}
+
+message Point {
+    string version = 1;
+    string messageType = 2;
+    string netType = 3;
+    string deviceId = 4;
+    fixed32 batteryPercent = 5;
+    int64 receiveTime = 6;
+    int64 deviceTime = 7;
+    double latitude = 8;
+    double longitude = 9;
+}
+
+message ServerCommand {
+    string version = 1;
+    string command = 2;
+}
+
+message ServerResponse {
+    string version = 1;
+
+    message Statistic {
+        string type = 2;
+        string value = 3;
+    }
+
+    repeated Statistic ServerStatistics = 4;
+}
+
+message PingCommand {
+    string message = 1;
+}

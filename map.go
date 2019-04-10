@@ -1,6 +1,8 @@
 package main
 
 import (
+	pb "Q50W/api"
+	"context"
 	"html/template"
 	"log"
 	"net/http"
@@ -8,6 +10,10 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
+
+	"google.golang.org/grpc"
 )
 
 type ViewData struct {
@@ -15,8 +21,13 @@ type ViewData struct {
 }
 
 type Client struct {
-	ID string
+	ID    string
+	Point *pb.Point
 }
+
+const (
+	STATIC_DIR = "/static/"
+)
 
 var settings *Config
 
@@ -29,7 +40,7 @@ var (
 func NewHTTPServer(cfg *Config) *http.Server {
 	settings = cfg
 
-	handler := createHandler()
+	handler := Router()
 
 	s := &http.Server{
 		Addr:           settings.Addr(),
@@ -43,16 +54,14 @@ func NewHTTPServer(cfg *Config) *http.Server {
 	return s
 }
 
-func createHandler() *http.ServeMux {
-	handler := http.NewServeMux()
+func Router() *mux.Router {
+	router := mux.NewRouter()
 
-	fs := http.FileServer(http.Dir("static"))
-	handler.Handle("/static/", http.StripPrefix("/static/", fs))
+	router.PathPrefix(STATIC_DIR).Handler(http.StripPrefix(STATIC_DIR, http.FileServer(http.Dir("."+STATIC_DIR)))).Methods("GET")
+	router.HandleFunc("/", handleIndex).Methods("GET")
+	router.HandleFunc("/set_id", handleSetCookie).Methods("POST")
 
-	handler.HandleFunc("/", handleIndex)
-	handler.HandleFunc("/set_id", handleSetCookie)
-
-	return handler
+	return router
 }
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -79,18 +88,19 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//TODO add request to map service
+	point := grpcRequest(watchIDValue)
+
 	client := Client{}
 	client.ID = watchIDValue
+	if point != nil {
+		client.Point = point
+	}
 	viewData.Client = client
+
 	handleIndexTemplate(w, r, viewData)
 }
 
 func handleSetCookie(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-	}
-
 	r.ParseForm()
 	watchIDValue := spaceJoin(r.FormValue(settings.CookieIDName))
 	result := checkClientID(watchIDValue)
@@ -123,4 +133,30 @@ func spaceJoin(s string) string {
 
 func (c Client) IsDefined() bool {
 	return c.ID != "" && len(c.ID) > 0
+}
+
+func (c Client) HasPoint() bool {
+	return c.Point != nil && (c.Point.GetLatitude() > 0 && c.Point.GetLongitude() > 0)
+}
+
+func grpcRequest(clientID string) *pb.Point {
+	conn, err := grpc.Dial(settings.ServiceAddr(), grpc.WithInsecure())
+	if err != nil {
+		log.Printf("%v", err)
+		return nil
+	}
+
+	defer conn.Close()
+
+	client := pb.NewRoutePointClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	point, err := client.LastPoint(ctx, &pb.Identifier{Version: "1", ClientId: clientID})
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+
+	return point
 }
