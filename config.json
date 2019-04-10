@@ -1,6 +1,8 @@
 {
 	"host": "127.0.0.1",
 	"port": "8080",
+	"watch_service_host": "127.0.0.1",
+	"watch_service_port": "30732",
 	"log_file_name": "q50w.log",
 	"cookie_id_name": "watch_id",
 	"cookie_max_length": 15
