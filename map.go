@@ -88,7 +88,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	point := grpcRequest(watchIDValue)
+	point := grpcWatchServiceCall(watchIDValue)
 
 	client := Client{}
 	client.ID = watchIDValue
@@ -139,7 +139,7 @@ func (c Client) HasPoint() bool {
 	return c.Point != nil && (c.Point.GetLatitude() > 0 && c.Point.GetLongitude() > 0)
 }
 
-func grpcRequest(clientID string) *pb.Point {
+func grpcWatchServiceCall(clientID string) *pb.Point {
 	conn, err := grpc.Dial(settings.ServiceAddr(), grpc.WithInsecure())
 	if err != nil {
 		log.Printf("%v", err)
@@ -154,7 +154,7 @@ func grpcRequest(clientID string) *pb.Point {
 
 	point, err := client.LastPoint(ctx, &pb.Identifier{Version: "1", ClientId: clientID})
 	if err != nil {
-		log.Println(err)
+		log.Printf("%v", err)
 		return nil
 	}
 
